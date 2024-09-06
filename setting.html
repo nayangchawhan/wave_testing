@@ -1,0 +1,395 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Automattrix Dashboard</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <link rel="stylesheet" href="styles.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@2.9.4/dist/Chart.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-gauge@0.3.0"></script>
+
+</head>
+<body>
+    <div class="container">
+        <aside class="sidebar">
+            <ul>
+                <li><a href="index.html"><i class="fas fa-home"></i></a></li>
+                <li><a href="up.html"><i class="fas fa-user"></i></a></li>
+                <!--<li><a href="#"><i class="fas fa-bell"></i></a></li>
+                <li><a href="#"><i class="fas fa-wifi"></i></a></li>-->
+                <li><a href="setting.html"><i class="fas fa-cog"></i></a></li>
+            </ul>
+        </aside>
+        <main class="main-content">
+            <header class="header">
+                <h1>Automattrix</h1>
+                <nav>
+                    <a href="index.html">Home</a>
+                </nav>
+            </header>
+            <section class="dashboard">
+                <!--<div class="card secure">
+                    <h3>Temperature</h3>
+                    <div id="gauge"><canvas id="tempGauge" width="10" height="10"></canvas></div>
+                    <i class="fas fa-temperature-high"></i>
+                </div>-->
+                <!--<div class="card light">
+                    <h3>Bedroom Light</h3>
+                    <div class="progress">
+                        <div class="progress-bar" style="width: 75%;"></div>
+                    </div>
+                    <span>75%</span>
+                    <i class="fas fa-lightbulb"></i>
+                </div>-->
+                <!--<div class="card kitchen-light">
+                    <h3>Light 1</h3>
+                    <div class="wrap-check-1">
+                        <input type="checkbox" id="i" value="1">
+                        
+                        <label for="i" class="checkbox">
+                            <div class="checkbox__inner">
+                                <div class="green__ball"></div>
+                            </div>
+                        </label>
+                        <div class="checkbox__text">
+                            <span>turned</span>
+                            <div class="checkbox__text--options">
+                                <span class="off">off</span>
+                                <span class="on">on</span>
+                            </div>
+                        </div>
+                    </div>
+                    <i class="fas fa-lightbulb"></i>
+                </div>-->
+                <div class="card temperature">
+                    <h3>Temperature</h3>
+                    <canvas id="tempChart" width="300" height="250"></canvas>
+                </div>
+                <div class="card temperature">
+                    <h3>Humidity</h3>
+                    <canvas id="humChart" width="300" height="250"></canvas>
+                </div>
+                <div class="card temperature">
+                    <h3>Sensor Battery</h3>
+                    <canvas id="tbtryChart" width="300" height="250"></canvas>
+                </div>
+                <!-- <div class="card temperature">
+                    <h3>Hub Temperature</h3>
+                    <canvas id="pitempChart" width="300" height="250"></canvas>
+                </div> -->
+            </section>
+        </main>
+    </div>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="scripts.js"></script>
+    <script type="module">
+
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js";
+
+        const firebaseConfig = {
+          apiKey: "AIzaSyDlLW27MJKryEE4juaVGcmjIotj5ueFebo",
+          authDomain: "rasptemp-d5695.firebaseapp.com",
+          databaseURL: "https://rasptemp-d5695-default-rtdb.firebaseio.com",
+          projectId: "rasptemp-d5695",
+          storageBucket: "rasptemp-d5695.appspot.com",
+          messagingSenderId: "936439079920",
+          appId: "1:936439079920:web:7a956f5f65ed3f3b497335"
+        };
+      
+        const app = initializeApp(firebaseConfig);
+
+        import {getDatabase, ref, child, get, set, update, remove, push,onValue} from "https://www.gstatic.com/firebasejs/10.12.5/firebase-database.js";
+        
+        const db=getDatabase();
+
+        //let temp = document.getElementById('temp')
+        //let i = document.getElementById('i')
+        //let tempbutton = document.getElementById('tempbutton')
+
+        function retData() {
+            const dbRef = ref(db, 'temp/');
+            const dbhum = ref(db, 'humidity/')
+            const dbtbtry = ref(db, 'btry/')
+            const dbpitemp = ref(db, 'pitemp/')
+            
+            // Listen for changes to the 'temp/' node in the database
+            onValue(dbRef, (snapshot) => {
+                if (snapshot.exists()) {
+                    const tempData = snapshot.val();
+                    const labels = [];
+                    const temperatures = [];
+                    const latestKey = Object.keys(tempData).pop(); // Get the last key (latest temperature)
+                    const latestTemp = tempData[latestKey]; // Get the latest temperature value
+
+                    // Update the gauge with the latest temperature
+                    //updateTemperatureGauge(latestTemp);
+
+                    // Extract keys (timestamps or unique ids) and values (temperatures)
+                    for (const key in tempData) {
+                        if (tempData.hasOwnProperty(key)) {
+                            labels.push(key); // Or format the key if it's a timestamp
+                            temperatures.push(tempData[key]);
+                        }
+                    }
+
+                    // Call the function to plot the data
+                    plotTemperatureGraph(labels, temperatures);
+                } else {
+                    alert('No data available');
+                }
+            }, (error) => {
+                console.error('Error retrieving data:', error);
+                alert('Error retrieving data');
+            });
+
+            onValue(dbhum, (snapshot) => {
+                if (snapshot.exists()) {
+                    const humData = snapshot.val();
+                    const labelsh = [];
+                    const humiditys = [];
+                    const latestKeyh = Object.keys(humData).pop(); // Get the last key (latest temperature)
+                    const latesthum = humData[latestKeyh]; // Get the latest temperature value
+
+                    // Update the gauge with the latest temperature
+                    //updateTemperatureGauge(latestTemp);
+
+                    // Extract keys (timestamps or unique ids) and values (temperatures)
+                    for (const key in humData) {
+                        if (humData.hasOwnProperty(key)) {
+                            labelsh.push(key); // Or format the key if it's a timestamp
+                            humiditys.push(humData[key]);
+                        }
+                    }
+
+                    // Call the function to plot the data
+                    plotHumidityGraph(labelsh, humiditys);
+                } else {
+                    alert('No data available');
+                }
+            }, (error) => {
+                console.error('Error retrieving data:', error);
+                alert('Error retrieving data');
+            });
+
+            onValue(dbtbtry, (snapshot) => {
+                if (snapshot.exists()) {
+                    const tbtryData = snapshot.val();
+                    const labelstb = [];
+                    const tbtrys = [];
+                    const latestKeybtry = Object.keys(tbtryData).pop(); // Get the last key (latest temperature)
+                    const latestbtry = tbtryData[latestKeybtry]; // Get the latest temperature value
+
+                    // Update the gauge with the latest temperature
+                    //updateTemperatureGauge(latestTemp);
+
+                    // Extract keys (timestamps or unique ids) and values (temperatures)
+                    for (const key in tbtryData) {
+                        if (tbtryData.hasOwnProperty(key)) {
+                            labelstb.push(key); // Or format the key if it's a timestamp
+                            tbtrys.push(tbtryData[key]);
+                        }
+                    }
+
+                    // Call the function to plot the data
+                    plotTbtryGraph(labelstb, tbtrys);
+                } else {
+                    alert('No data available');
+                }
+            }, (error) => {
+                console.error('Error retrieving data:', error);
+                alert('Error retrieving data');
+            });
+
+
+            // onValue(dbpitemp, (snapshot) => {
+            //     if (snapshot.exists()) {
+            //         const pitempData = snapshot.val();
+            //         const labelspit = [];
+            //         const pitemps = [];
+            //         const latestKeypitemp = Object.keys(pitempData).pop(); // Get the last key (latest temperature)
+            //         const latestpitemp = pitempData[latestKeypitemp]; // Get the latest temperature value
+
+            //         // Update the gauge with the latest temperature
+            //         //updateTemperatureGauge(latestTemp);
+
+            //         // Extract keys (timestamps or unique ids) and values (temperatures)
+            //         for (const key in pitempData) {
+            //             if (pitempData.hasOwnProperty(key)) {
+            //                 labelspit.push(key); // Or format the key if it's a timestamp
+            //                 pitemps.push(pitempData[key]);
+            //             }
+            //         }
+            //         console.log('pitemp',pitemps)
+            //         // Call the function to plot the data
+            //         plotPiTempGraph(labelspit, pitemps);
+            //     } else {
+            //         alert('No data available');
+            //     }
+            // }, (error) => {
+            //     console.error('Error retrieving data:', error);
+            //     alert('Error retrieving data');
+            // });
+        }
+
+        
+
+        function plotTemperatureGraph(labels, data) {
+            const ctx = document.getElementById('tempChart').getContext('2d');
+            new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels, // X-axis labels
+                    datasets: [{
+                        label: 'Temperature (°C)',
+                        data: data, // Y-axis data
+                        fill: false,
+                        borderColor: 'rgb(75, 192, 192)',
+                        tension: 0.1
+                    }]
+                },
+                options: {
+                    scales: {
+                        x: {
+                            ticks:{
+                                display:false,
+                            },
+                            title: {
+                                display: false,
+                                ticks: {
+                                     display: false // Hide X-axis ticks
+                                }
+                            }
+                        },
+                        y: {
+                            title: {
+                                display: true,
+                                text: 'Temperature (°C)'
+                            }
+                        }
+                    }
+                }
+            });
+        }
+            
+        function plotHumidityGraph(labels, data) {
+            const ctxh = document.getElementById('humChart').getContext('2d');
+            new Chart(ctxh, {
+                type: 'line',
+                data: {
+                    labels: labels, // X-axis labels
+                    datasets: [{
+                        label: 'Humidity (%)',
+                        data: data, // Y-axis data
+                        fill: false,
+                        borderColor: 'rgb(75, 192, 192)',
+                        tension: 0.1
+                    }]
+                },
+                options: {
+                    scales: {
+                        x: {
+                            ticks:{
+                                display:false,
+                                },
+                            title: {
+                                display: false,
+                                ticks: {
+                                     display: false // Hide X-axis ticks
+                                }
+                            }
+                        },
+                        y: {
+                            title: {
+                                display: true,
+                                text: 'Humidity (%)'
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        function plotTbtryGraph(labels, data) {
+            const ctxtb = document.getElementById('tbtryChart').getContext('2d');
+            new Chart(ctxtb, {
+                type: 'line',
+                data: {
+                    labels: labels, // X-axis labels
+                    datasets: [{
+                        label: 'Battery (%)',
+                        data: data, // Y-axis data
+                        fill: false,
+                        borderColor: 'rgb(75, 192, 192)',
+                        tension: 0.1
+                    }]
+                },
+                options: {
+                    scales: {
+                        x: {
+                            ticks:{
+                                display:false,
+                                },
+                            title: {
+                                display: false,
+                                ticks: {
+                                     display: false // Hide X-axis ticks
+                                }
+                            }
+                        },
+                        y: {
+                            title: {
+                                display: true,
+                                text: 'temp sensor battery (%)'
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        // function plotPiTempGraph(labels, data) {
+        //     const ctxpit = document.getElementById('pitempChart').getContext('2d');
+        //     new Chart(ctxpit, {
+        //         type: 'line',
+        //         data: {
+        //             labels: labels, // X-axis labels
+        //             datasets: [{
+        //                 label: 'Temperature (°C)',
+        //                 data: data, // Y-axis data
+        //                 fill: false,
+        //                 borderColor: 'rgb(75, 192, 192)',
+        //                 tension: 0.1
+        //             }]
+        //         },
+        //         options: {
+        //             scales: {
+        //                 x: {
+        //                     ticks:{
+        //                         display:false,
+        //                         },
+        //                     title: {
+        //                         display: false,
+        //                         ticks: {
+        //                              display: false // Hide X-axis ticks
+        //                         }
+        //                     }
+        //                 },
+        //                 y: {
+        //                     title: {
+        //                         display: true,
+        //                         text: 'Hub Temperature (°C)'
+        //                     }
+        //                 }
+        //             }
+        //         }
+        //     });
+        // }
+
+// Automatically fetch and display data on page load
+window.addEventListener('load', retData);
+
+      </script>
+</body>
+</html>
